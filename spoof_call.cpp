@@ -28,24 +28,24 @@ namespace detail
 	}
 
 	template <typename RET, typename... ARGS>
-	static inline RET shellcode_stub(const void* shell, void* shell_param, ARGS... args)
+	static inline RET shellcode_stub(const void* shell, void* shell_param, ARGS&&... args)
 	{
 		auto fn = (RET(*)(void*, ARGS...))(shell);
-		return fn(shell_param, args...);
+		return fn(shell_param, std::forward<ARGS>(args)...);
 	}
 
 	template<typename RET, typename... ARGS>
 	struct argument_remapper
 	{
-		static RET do_call(void* shell_param, ARGS... args)
+		static RET do_call(void* shell_param, ARGS&&... args)
 		{
 			if constexpr (sizeof...(args) >= 4)
 			{
-				return shellcode_stub<RET, ARGS...>(&NoStackShellcode, shell_param, args...);
+				return shellcode_stub<RET, ARGS...>(&NoStackShellcode, shell_param, std::forward<ARGS>(args)...);
 			}
 			else
 			{
-				return shellcode_stub_arg6<RET>(&NoStackShellcode, shell_param, (void*)args...);
+				return shellcode_stub_arg6<RET>(&NoStackShellcode, shell_param, (void*)std::forward<ARGS>(args)...);
 			}
 		}
 	};
@@ -62,15 +62,15 @@ namespace detail
 
 	template <typename RET, NOT_USE_XMM... ARGS>
 	struct FunctionTraits<RET(ARGS...)> {
-		static inline RET spoof_call(const void* gadget, RET(*fn)(ARGS...), ARGS... args)
+		static inline RET spoof_call(const void* gadget, RET(*fn)(ARGS...), ARGS&&... args)
 		{
 			shell_params param{ .gadget = gadget, .realfunction_addr = fn };
-			return argument_remapper<RET, ARGS...>::do_call(&param, args...);
+			return argument_remapper<RET, ARGS...>::do_call(&param, std::forward<ARGS>(args)...);
 		}
 	};
 }
 
-int64_t function(int64_t a, int64_t b, int64_t c, int64_t d, int64_t e, int64_t f);
+int64_t function(int64_t&& a, int64_t&& b, int64_t&& c, int64_t&& d, int64_t&& e, int64_t&& f);
 
 int main()
 {
@@ -84,7 +84,7 @@ int main()
 	return std::getchar();
 }
 
-int64_t function(int64_t a, int64_t b, int64_t c, int64_t d, int64_t e, int64_t f)
+int64_t function(int64_t&& a, int64_t&& b, int64_t&& c, int64_t&& d, int64_t&& e, int64_t&& f)
 {
 	return a + b + c + d + e + f;
 }
